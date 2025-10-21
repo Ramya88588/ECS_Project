@@ -31,6 +31,7 @@
             "@radix-ui/react-toggle-group": "^1.1.2",
             "@radix-ui/react-tooltip": "^1.1.8",
             "@tailwindcss/vite": "^4.1.14",
+            "@types/react-dom": "^19.2.2",
             "class-variance-authority": "^0.7.1",
             "clsx": "*",
             "cmdk": "^1.1.1",
@@ -59,8 +60,8 @@
             "vite": "6.3.5"
       },
       "scripts": {
-             "predeploy":"npm run build",
-            "deploy":"gh-pages -d dist",
+            "predeploy": "npm run build",
+            "deploy": "gh-pages -d dist",
             "dev": "vite",
             "build": "vite build"
       }

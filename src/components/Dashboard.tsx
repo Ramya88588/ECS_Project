@@ -6,7 +6,7 @@ import { Badge } from './ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { MedicineBox, Alert as AlertType } from '../types';
 import { dataService } from '../services/dataService';
-import { esp32Service } from '../services/esp32Service';
+import { esp32Service } from '../services/ESP32Service';
 import { useAuth } from './auth/AuthProvider';
 import { toast } from 'sonner';
 
@@ -81,19 +81,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectBox, onCreateBox, 
     }
   };
 
+//code changed----------------------------
 
+ const handleDeleteBox = async (boxId: string, boxName: string) => {
+  try {
+    // Delete the box and related alerts from localStorage
+    await dataService.deleteMedicineBox(boxId);
 
-  const handleDeleteBox = async (boxId: string, boxName: string) => {
-    try {
-      await dataService.deleteMedicineBox(boxId);
-      setMedicineBoxes(prev => prev.filter(box => box.id !== boxId));
-      toast.success(`${boxName} has been deleted successfully!`);
-    } catch (error) {
-      console.error('Failed to delete medicine box:', error);
-      toast.error('Failed to delete medicine box. Please try again.');
-    }
-  };
+    // Update medicine boxes state immediately
+    setMedicineBoxes(prev => prev.filter(box => box.id !== boxId));
 
+    // Update alerts state immediately
+    const updatedAlerts = await dataService.getAlerts(user?.id || '');
+    setAlerts(updatedAlerts);
+
+    toast.success(`${boxName} has been deleted successfully!`);
+  } catch (error) {
+    console.error('Failed to delete medicine box:', error);
+    toast.error('Failed to delete medicine box. Please try again.');
+  }
+};
+
+//Code changed-----------------------
   const handleConnectBox = async (box: MedicineBox) => {
     if (connectingBoxes.has(box.id)) return;
 
@@ -186,7 +195,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectBox, onCreateBox, 
   const handleBoxClick = (box: MedicineBox) => {
     onSelectBox(box);
   };
-
+    const lowStockCount = medicineBoxes.reduce((count, box) => {
+  const low = box.medicines.filter(med => med.totalCount < 5).length;
+  return count + low;
+}, 0);
   const unreadAlerts = alerts.filter(alert => !alert.isRead);
   const connectedBoxes = medicineBoxes.filter(box => box.isConnected).length;
   const totalMedicines = medicineBoxes.reduce((total, box) => total + box.medicines.length, 0);
@@ -242,7 +254,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectBox, onCreateBox, 
             <AlertTriangle className="h-4 w-4 text-warning" />
           </CardHeader>
           <CardContent className="pt-2">
-            <div className="text-2xl font-bold text-warning mb-1">{unreadAlerts.length}</div>
+            <div className="text-2xl font-bold text-warning mb-1">{lowStockCount}</div> 
+            {/* //changed from unreadAlerts.length; */}
             <p className="text-xs text-muted-foreground">
               Need attention
             </p>

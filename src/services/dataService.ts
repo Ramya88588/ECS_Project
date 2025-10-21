@@ -1,5 +1,5 @@
 import { MedicineBox, Medicine, Alert } from '../types';
-import { esp32Service } from './ESP32Service';  // <-- make sure this import exists
+import { esp32Service} from './ESP32Service';  // <-- make sure this import exists
 
 // LocalStorage keys
 const STORAGE_KEYS = {
@@ -196,11 +196,39 @@ export const dataService = {
     return boxes[index];
   },
 
+  // async deleteMedicineBox(id: string): Promise<void> {
+  //   const boxes = getMedicineBoxesFromStorage();
+  //   const filteredBoxes = boxes.filter(box => box.id !== id);
+  //   saveToStorage(STORAGE_KEYS.MEDICINE_BOXES, filteredBoxes);
+  // },
   async deleteMedicineBox(id: string): Promise<void> {
-    const boxes = getMedicineBoxesFromStorage();
-    const filteredBoxes = boxes.filter(box => box.id !== id);
-    saveToStorage(STORAGE_KEYS.MEDICINE_BOXES, filteredBoxes);
-  },
+  const boxes = getMedicineBoxesFromStorage();
+  const boxToDelete = boxes.find(box => box.id === id);
+
+  if (!boxToDelete) {
+    console.warn(`No medicine box found with id: ${id}`);
+    return;
+  }
+
+  // 1️⃣ Delete the box itself
+  const filteredBoxes = boxes.filter(box => box.id !== id);
+  saveToStorage(STORAGE_KEYS.MEDICINE_BOXES, filteredBoxes);
+
+  // 2️⃣ Delete related alerts
+  const alerts = getAlertsFromStorage();
+
+  // Remove all alerts linked to this box or any medicine inside it
+  const filteredAlerts = alerts.filter(alert => {
+    const belongsToDeletedBox =
+      alert.boxName === boxToDelete.name ||
+      boxToDelete.medicines.some(med => med.id === alert.medicineId);
+    return !belongsToDeletedBox; // keep only alerts NOT related to deleted box
+  });
+
+  saveToStorage(STORAGE_KEYS.ALERTS, filteredAlerts);
+  window.location.reload();
+},
+
 
   // Medicines
   async addMedicine(boxId: string, medicineData: Omit<Medicine, 'id' | 'createdAt' | 'updatedAt'>): Promise<Medicine> {
@@ -306,7 +334,7 @@ export const dataService = {
     const alert = alerts.find(a => a.id === alertId);
     if (alert) {
       alert.isRead = true;
-      saveToStorage(STORAGE_KEYS.ALERTS, alerts);
+      saveToStorage(STORAGE_KEYS.ALERTS, alerts.filter(a => !a.isRead));
     }
   },
 
@@ -435,41 +463,102 @@ async syncWithESP32(boxId: string): Promise<any> {
   },
 
   // Simulate ESP32 connection attempt
-  async attemptESP32Connection(boxId: string): Promise<{ success: boolean; message: string }> {
-    const boxes = getMedicineBoxesFromStorage();
-    const box = boxes.find(b => b.boxId === boxId);
-    if (!box) {
-      throw new Error('Medicine box not found');
-    }
 
-    // Simulate connection attempt with random success/failure
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const success = Math.random() > 0.2; // 80% success rate
+
+  //code changed by me --------------------------------------------
+
+
+  // async attemptESP32Connection(boxId: string): Promise<{ success: boolean; message: string }> {
+  //   const boxes = getMedicineBoxesFromStorage();
+  //   const box = boxes.find(b => b.boxId === boxId);
+  //   if (!box) {
+  //     throw new Error('Medicine box not found');
+  //   }
+
+  //   // Simulate connection attempt with random success/failure
+  //   return new Promise((resolve) => {
+  //     setTimeout(() => {
+  //       const success = Math.random() > 0.2; // 80% success rate
         
-        if (success) {
-          box.isConnected = true;
-          box.lastSyncAt = new Date();
-          box.updatedAt = new Date();
+  //       if (success) {
+  //         box.isConnected = true;
+  //         box.lastSyncAt = new Date();
+  //         box.updatedAt = new Date();
           
-          saveToStorage(STORAGE_KEYS.MEDICINE_BOXES, boxes);
-          resolve({
-            success: true,
-            message: `Successfully connected to ESP32 device ${box.boxId.split('_')[1]}`
-          });
-        } else {
-          box.isConnected = false;
-          box.updatedAt = new Date();
+  //         saveToStorage(STORAGE_KEYS.MEDICINE_BOXES, boxes);
+  //         resolve({
+  //           success: true,
+  //           message: `Successfully connected to ESP32 device ${box.boxId.split('_')[1]}`
+  //         });
+  //       } else {
+  //         box.isConnected = false;
+  //         box.updatedAt = new Date();
           
-          saveToStorage(STORAGE_KEYS.MEDICINE_BOXES, boxes);
-          resolve({
-            success: false,
-            message: 'Failed to connect to ESP32 device. Please check if the device is powered on and within range.'
-          });
-        }
-      }, 1500);
-    });
-  },
+  //         saveToStorage(STORAGE_KEYS.MEDICINE_BOXES, boxes);
+  //         resolve({
+  //           success: false,
+  //           message: 'Failed to connect to ESP32 device. Please check if the device is powered on and within range.'
+  //         });
+  //       }
+  //     }, 1500);
+  //   });
+  // },
+
+
+  //duplicate code -----------------------------------------------
+
+
+//   async attemptESP32Connection(boxId: string): Promise<{ success: boolean; message: string }> {
+//   const boxes = getMedicineBoxesFromStorage();
+//   const box = boxes.find(b => b.boxId === boxId);
+//   if (!box) throw new Error('Medicine box not found');
+
+//   try {
+//     // Try to ping the ESP32
+//     const response = await fetch(`http://${box.ipAddress}/ping`, { method: 'GET', signal: AbortSignal.timeout(5000) });
+
+//     if (response.ok) {
+//       box.isConnected = true;
+//       box.lastSyncAt = new Date();
+//       box.updatedAt = new Date();
+//       saveToStorage(STORAGE_KEYS.MEDICINE_BOXES, boxes);
+//       return {
+//         success: true,
+//         message: `✅ Connected to ESP32 device (${box.ipAddress})`
+//       };
+//     } else {
+//       throw new Error(`HTTP ${response.status}`);
+//     }
+//   } catch (error) {
+//     box.isConnected = false;
+//     box.updatedAt = new Date();
+//     saveToStorage(STORAGE_KEYS.MEDICINE_BOXES, boxes);
+//     return {
+//       success: false,
+//       message: '❌ Could not reach ESP32. Please check if the device is powered on and on the same network.'
+//     };
+//   }
+// },
+ // adjust path if needed
+
+async attemptESP32Connection(boxId: string): Promise<{ success: boolean; message: string }> {
+  const boxes = getMedicineBoxesFromStorage();
+  const box = boxes.find(b => b.boxId === boxId);
+  if (!box) throw new Error('Medicine box not found');
+
+  const result = await esp32Service.testConnection(box.ipAddress);
+
+  // Update local storage based on result
+  box.isConnected = result.success;
+  box.updatedAt = new Date();
+  if (result.success) box.lastSyncAt = new Date();
+
+  saveToStorage(STORAGE_KEYS.MEDICINE_BOXES, boxes);
+
+  return result;
+},
+
+//code changed by me-----------------------------------------------
 
   // Track medicine times and auto-deduct counts
   checkMedicineTimes(): Alert[] {
@@ -491,13 +580,23 @@ async syncWithESP32(boxId: string): Promise<any> {
           // Check if it's time to take medicine and we haven't already processed this time today
           if (scheduleTime === currentTime && medicine.currentCount > 0) {
             // Check if we've already processed this medicine time today
-            const existingTimeAlert = alerts.find(
-              alert => alert.medicineId === medicine.id && 
-                      alert.type === 'medicine_time' && 
-                      alert.createdAt.toDateString() === currentDate &&
-                      alert.message.includes(scheduleTime)
-            );
-
+            // const existingTimeAlert = alerts.find(
+            //   alert => alert.medicineId === medicine.id && 
+            //           alert.type === 'medicine_time' && 
+            //           alert.createdAt.toDateString() === currentDate &&
+            //           alert.message.includes(scheduleTime)
+            // );
+            //code changed by me---------------------------
+            const existingTimeAlert = alerts.find(alert => {
+           const alertDate = new Date(alert.createdAt).toDateString();
+              return (
+                alert.medicineId === medicine.id &&
+                alert.type === 'medicine_time' &&
+                alertDate === currentDate &&
+                alert.message.includes(scheduleTime)
+               );
+              });
+              // code changed by me ------------------
             if (!existingTimeAlert) {
               // Deduct medicine count
               medicine.currentCount = Math.max(0, medicine.currentCount - 1);
@@ -566,46 +665,88 @@ async syncWithESP32(boxId: string): Promise<any> {
 
     return newAlerts;
   },
-
+//code changed by me------------------------------------------
   // Auto-check for low medicines (manual check)
-  checkLowMedicines(): Alert[] {
-    const newAlerts: Alert[] = [];
-    const boxes = getMedicineBoxesFromStorage();
-    const alerts = getAlertsFromStorage();
+  // checkLowMedicines(): Alert[] {
+  //   const newAlerts: Alert[] = [];
+  //   const boxes = getMedicineBoxesFromStorage();
+  //   const alerts = getAlertsFromStorage();
     
-    boxes.forEach(box => {
-      box.medicines.forEach(medicine => {
-        const daysRemaining = medicine.currentCount / medicine.timesPerDay;
-        if (daysRemaining <= 3 && daysRemaining > 0) {
-          // Check if alert already exists
-          const existingAlert = alerts.find(
-            alert => alert.medicineId === medicine.id && alert.type === 'low_count' && !alert.isRead
-          );
+  //   boxes.forEach(box => {
+  //     box.medicines.forEach(medicine => {
+  //       const daysRemaining = medicine.currentCount / medicine.timesPerDay;
+  //       if (daysRemaining <= 3 && daysRemaining > 0) {
+  //         // Check if alert already exists
+  //         const existingAlert = alerts.find(
+  //           alert => alert.medicineId === medicine.id && alert.type === 'low_count' && !alert.isRead
+  //         );
           
-          if (!existingAlert) {
-            const newAlert: Alert = {
-              id: Math.random().toString(36).substr(2, 9),
-              medicineId: medicine.id,
-              medicineName: medicine.name,
-              boxName: box.name,
-              type: 'low_count',
-              message: `${medicine.name} is running low (${medicine.currentCount} pills remaining). Time to refill!`,
-              isRead: false,
-              createdAt: new Date()
-            };
-            newAlerts.push(newAlert);
-            alerts.push(newAlert);
-          }
-        }
-      });
-    });
+  //         if (!existingAlert) {
+  //           const newAlert: Alert = {
+  //             id: Math.random().toString(36).substr(2, 9),
+  //             medicineId: medicine.id,
+  //             medicineName: medicine.name,
+  //             boxName: box.name,
+  //             type: 'low_count',
+  //             message: `${medicine.name} is running low (${medicine.currentCount} pills remaining). Time to refill!`,
+  //             isRead: false,
+  //             createdAt: new Date()
+  //           };
+  //           newAlerts.push(newAlert);
+  //           alerts.push(newAlert);
+  //         }
+  //       }
+  //     });
+  //   });
     
-    // Save updated alerts
-    saveToStorage(STORAGE_KEYS.ALERTS, alerts);
+  //   // Save updated alerts
+  //   saveToStorage(STORAGE_KEYS.ALERTS, alerts);
     
-    return newAlerts;
-  },
+  //   return newAlerts;
+  // },
 
+  checkLowMedicines(): Alert[] {
+  const newAlerts: Alert[] = [];
+  const boxes = getMedicineBoxesFromStorage();
+  const alerts = getAlertsFromStorage();
+
+  boxes.forEach(box => {
+    box.medicines.forEach(medicine => {
+      const daysRemaining = medicine.currentCount / medicine.timesPerDay;
+
+      if (daysRemaining <= 3 && daysRemaining > 0) {
+        // Check if a low_count alert already exists for this medicine and is unread
+        const existingAlert = alerts.find(
+          alert => alert.medicineId === medicine.id && alert.type === 'low_count'
+          //  && !alert.isRead
+        );
+
+        if (!existingAlert) {
+          // Only create a new alert if it doesn't already exist
+          const newAlert: Alert = {
+            id: Math.random().toString(36).substr(2, 9),
+            medicineId: medicine.id,
+            medicineName: medicine.name,
+            boxName: box.name,
+            type: 'low_count',
+            message: `${medicine.name} is running low (${medicine.currentCount} pills remaining). Time to refill!`,
+            isRead: false,
+            createdAt: new Date()
+          };
+          newAlerts.push(newAlert);
+          alerts.push(newAlert);
+        }
+      }
+    });
+  });
+
+  // Save updated alerts
+  saveToStorage(STORAGE_KEYS.ALERTS, alerts);
+
+  return newAlerts;
+},
+
+//code changed by me --------------------------------------
   // Mark all alerts as read
   async markAllAlertsAsRead(userId: string): Promise<void> {
     const alerts = getAlertsFromStorage();
@@ -613,5 +754,13 @@ async syncWithESP32(boxId: string): Promise<any> {
       alert.isRead = true;
     });
     saveToStorage(STORAGE_KEYS.ALERTS, alerts);
-  }
+  },
+
+  // code added by me-------
+
+  async deleteAlert(alertId: string): Promise<void> {
+  const alerts = getAlertsFromStorage();
+  const updatedAlerts = alerts.filter(alert => alert.id !== alertId);
+  saveToStorage(STORAGE_KEYS.ALERTS, updatedAlerts);
+}
 };

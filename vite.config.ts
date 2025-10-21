@@ -5,6 +5,7 @@
   import tailwindcss from '@tailwindcss/vite'
 
   export default defineConfig({
+     base: 'ECS_Project',
     plugins: [react(),tailwindcss()],
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],

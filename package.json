@@ -2,6 +2,7 @@
       "name": "Smart Medicine Box Management System",
       "version": "0.1.0",
       "private": true,
+      "homepage": "https://https://ramya88588.github.io/ECS_Project/",
       "dependencies": {
             "@radix-ui/react-accordion": "^1.2.3",
             "@radix-ui/react-alert-dialog": "^1.1.6",
@@ -54,9 +55,12 @@
             "@types/node": "^20.10.0",
             "@types/react": "^19.2.2",
             "@vitejs/plugin-react-swc": "^3.10.2",
+            "gh-pages": "^6.3.0",
             "vite": "6.3.5"
       },
       "scripts": {
+             "predeploy":"npm run build",
+            "deploy":"gh-pages -d dist",
             "dev": "vite",
             "build": "vite build"
       }
